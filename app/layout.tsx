@@ -3,6 +3,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 import { Toaster } from "sonner";
+import RealtimeRefresh from "@/components/RealtimeRefresh";
 
 export const metadata: Metadata = {
   title: "치지직 포인트 시스템",
