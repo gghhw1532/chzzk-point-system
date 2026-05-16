@@ -15,7 +15,15 @@ if (!admin.ok) {
   );
 }
 
+
+
     const { predictionId, winningOptionId } = await req.json();
+
+    const { data: winningOption } = await supabaseAdmin
+  .from("prediction_options")
+  .select("*")
+  .eq("id", winningOptionId)
+  .single();
 
     if (!predictionId || !winningOptionId) {
       return NextResponse.json(
@@ -115,7 +123,13 @@ if (!admin.ok) {
       .eq("id", predictionId);
 
       await sendDiscordChannelMessage(
-  `🏆 승부예측 정산 완료!\n\n예측 ID: ${predictionId}\n승리 선택지 ID: ${winningOptionId}`
+  `🏆 승부예측 정산 완료!\n\n제목: ${
+    prediction.title
+  }\n승리 선택지: ${
+    winningOption?.title ?? "알 수 없음"
+  }\n정답자 수: ${
+    winningBets.length
+  }명`
 ).catch(console.error);
 
     return NextResponse.json({
