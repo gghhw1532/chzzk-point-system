@@ -87,12 +87,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: betError.message }, { status: 500 });
   }
 
+  
+  
   await supabase.from("point_logs").insert({
     user_id: user.id,
     type: "prediction_bet",
     amount: -betAmount,
     reason: `승부예측 배팅: ${prediction.title}`,
   });
+
+  
 
   await sendChzzkChat(
     `${user.nickname}님 '${prediction.title}'에 ${betAmount}P 배팅!`

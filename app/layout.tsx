@@ -21,7 +21,7 @@ export default function RootLayout({
         <Header/>
         {children}
         <BottomNav/>
-
+        <RealtimeRefresh />
         <Toaster
   richColors
   position="top-right"
