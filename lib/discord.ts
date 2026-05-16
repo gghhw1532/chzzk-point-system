@@ -1,22 +1,26 @@
-const DISCORD_API = "https://discord.com/api/v10";
+const botToken = process.env.DISCORD_BOT_TOKEN;
+const notifyChannelId = process.env.DISCORD_NOTIFY_CHANNEL_ID;
 
-function getBotToken() {
-  return process.env.DISCORD_BOT_TOKEN;
-}
+export async function sendDiscordDM(userId: string, message: string) {
+  if (!botToken) return;
 
-export async function sendDiscordChannelMessage(message: string) {
-  const token = getBotToken();
-  const channelId = process.env.DISCORD_NOTIFY_CHANNEL_ID;
-
-  if (!token || !channelId) {
-    console.log("[DISCORD CHANNEL TEST]", message);
-    return;
-  }
-
-  await fetch(`${DISCORD_API}/channels/${channelId}/messages`, {
+  const dmResponse = await fetch("https://discord.com/api/v10/users/@me/channels", {
     method: "POST",
     headers: {
-      Authorization: `Bot ${token}`,
+      Authorization: `Bot ${botToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      recipient_id: userId,
+    }),
+  });
+
+  const dmChannel = await dmResponse.json();
+
+  await fetch(`https://discord.com/api/v10/channels/${dmChannel.id}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${botToken}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -25,38 +29,18 @@ export async function sendDiscordChannelMessage(message: string) {
   });
 }
 
-export async function sendDiscordDM(discordUserId: string, message: string) {
-  const token = getBotToken();
-
-  if (!token || !discordUserId) {
-    console.log("[DISCORD DM TEST]", discordUserId, message);
+export async function sendDiscordChannelMessage(message: string) {
+  if (!botToken || !notifyChannelId) {
+    console.log("[DISCORD CHANNEL] 토큰 또는 채널 ID 없음");
     return;
   }
 
-  const dmResponse = await fetch(`${DISCORD_API}/users/@me/channels`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bot ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      recipient_id: discordUserId,
-    }),
-  });
-
-  if (!dmResponse.ok) {
-    console.error("[DISCORD DM CHANNEL ERROR]", await dmResponse.text());
-    return;
-  }
-
-  const dmChannel = await dmResponse.json();
-
-  const messageResponse = await fetch(
-    `${DISCORD_API}/channels/${dmChannel.id}/messages`,
+  const response = await fetch(
+    `https://discord.com/api/v10/channels/${notifyChannelId}/messages`,
     {
       method: "POST",
       headers: {
-        Authorization: `Bot ${token}`,
+        Authorization: `Bot ${botToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -65,7 +49,8 @@ export async function sendDiscordDM(discordUserId: string, message: string) {
     }
   );
 
-  if (!messageResponse.ok) {
-    console.error("[DISCORD DM SEND ERROR]", await messageResponse.text());
+  if (!response.ok) {
+    const text = await response.text();
+    console.error("[DISCORD CHANNEL ERROR]", response.status, text);
   }
 }

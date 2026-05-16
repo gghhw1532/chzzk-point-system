@@ -37,7 +37,7 @@ export default async function AdminUsersPage() {
                 <p className="font-bold">{user.nickname}</p>
 
                 <p className="mt-1 text-sm text-gray-400">
-                  {user.discord_connected
+                {user.discord_user_id
                     ? "디스코드 연동됨"
                     : "디스코드 미연동"}
                 </p>
