@@ -115,7 +115,7 @@ if (!admin.ok) {
       .eq("id", predictionId);
 
       await sendDiscordChannelMessage(
-  `🏁 승부예측이 정산되었습니다!\n\n주제: ${prediction.title}\n정답자: ${winningBets.length}명\n정답 쪽 총 배팅: ${winningTotal}P\n오답 쪽 총 배팅: ${losingTotal}P`
+  `🏆 승부예측 정산 완료!\n\n예측 ID: ${predictionId}\n승리 선택지 ID: ${winningOptionId}`
 ).catch(console.error);
 
     return NextResponse.json({

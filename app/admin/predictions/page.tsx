@@ -2,6 +2,7 @@ import AdminCreatePredictionForm from "@/components/AdminCreatePredictionForm";
 import AdminPredictionList from "@/components/AdminPredictionList";
 import { supabase } from "@/lib/supabase";
 
+
 export default async function AdminPredictionsPage() {
   const { data: predictions } = await supabase
     .from("predictions")
