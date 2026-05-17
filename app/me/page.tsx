@@ -23,11 +23,7 @@ export default async function MePage() {
         >
           치지직 로그인
         </a>
-      </PageContainer>
-    );
-  }
-
-  <div className="mt-4 rounded-2xl bg-gray-50 p-4 text-sm leading-6 text-gray-500">
+        <div className="mt-4 rounded-2xl bg-gray-50 p-4 text-sm leading-6 text-gray-500">
   <p className="font-bold text-gray-700">치지직 로그인 안내</p>
   <p className="mt-2">
     치지직 로그인은 포인트 지급, 출석, 시청 인증, 상점 구매,
@@ -41,6 +37,10 @@ export default async function MePage() {
     개인정보 및 서비스 이용 안내 보기
   </a>
 </div>
+      </PageContainer>
+    );
+  }
+
 
   const { data: pointLogs } = await supabase
     .from("point_logs")
