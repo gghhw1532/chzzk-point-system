@@ -5,7 +5,17 @@ export default async function AdminPage() {
   const { data: purchases } = await supabase.from("purchases").select("*");
   const { data: predictions } = await supabase.from("predictions").select("*");
 
+      function isBotOnline(lastPing?: string) {
+  if (!lastPing) return false;
+
+  const diff = Date.now() - new Date(lastPing).getTime();
+
+  return diff < 60 * 1000;
+}
+   
+
   const { data: recentPointLogs } = await supabase
+
     .from("point_logs")
     .select(`
       *,
@@ -156,13 +166,15 @@ export default async function AdminPage() {
           <div className="rounded-3xl border bg-white p-6 shadow-sm">
   <h3 className="text-lg font-black">봇 상태</h3>
 
+  
+  
   <div className="mt-4 space-y-3">
     {["discord", "chzzk"].map((name) => {
+         
       const bot = botStatuses?.find((item) => item.name === name);
 
-      const isOnline = bot?.status === "online";
-      const isError = bot?.status === "error";
-
+const isOnline = isBotOnline(bot?.last_ping);
+const isError = bot?.status === "error";
       return (
         <div
           key={name}

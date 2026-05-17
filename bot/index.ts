@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { updateBotStatus } from "@/lib/bot-status";
+import { startBotHeartbeat } from "@/lib/bot-status";
 
 dotenv.config({ path: ".env.local" });
 import {
@@ -19,7 +20,11 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL!;
 
 client.once("clientReady", () => {
   console.log(`${client.user?.tag} 로그인 완료!`);
-  updateBotStatus("discord", "online", "디스코드 봇 로그인 완료").catch(console.error);
+
+  startBotHeartbeat(
+    "discord",
+    "디스코드 봇 정상 작동 중"
+  );
 });
 
 client.on("error", async () => {

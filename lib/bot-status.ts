@@ -12,12 +12,24 @@ export async function updateBotStatus(
       memo: memo ?? null,
       last_ping: new Date().toISOString(),
     },
-    {
-      onConflict: "name",
-    }
+    { onConflict: "name" }
   );
 
   if (error) {
     console.error("[BOT STATUS UPDATE ERROR]", error);
   }
+}
+
+export function startBotHeartbeat(
+  name: string,
+  memo: string,
+  intervalMs = 30000
+) {
+  updateBotStatus(name, "online", memo).catch(console.error);
+
+  const timer = setInterval(() => {
+    updateBotStatus(name, "online", memo).catch(console.error);
+  }, intervalMs);
+
+  return timer;
 }

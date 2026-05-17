@@ -3,7 +3,7 @@ dotenv.config({ path: ".env.local" });
 
 import io from "socket.io-client";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { updateBotStatus } from "@/lib/bot-status";
+import { startBotHeartbeat, updateBotStatus } from "@/lib/bot-status";
 
 const CHZZK_API = "https://openapi.chzzk.naver.com";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -128,14 +128,13 @@ async function start() {
   });
 
   socket.on("connect", async () => {
-    console.log("[CHZZK] Socket.IO 연결 완료");
+  console.log("[CHZZK] Socket.IO 연결 완료");
 
-    await updateBotStatus(
-      "chzzk",
-      "online",
-      "치지직 세션 연결됨"
-    );
-  });
+  startBotHeartbeat(
+    "chzzk",
+    "치지직 세션 연결됨"
+  );
+});
 
   socket.on("SYSTEM", async (rawData: any) => {
     const data = parseEvent(rawData);
