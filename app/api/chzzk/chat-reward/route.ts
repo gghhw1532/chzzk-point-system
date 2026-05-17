@@ -4,7 +4,7 @@ import { applyPointMultiplier } from "@/lib/points";
 import { getNumberSetting } from "@/lib/settings";
 import { errorResponse, successResponse } from "@/lib/api-response";
 
-const WATCH_VERIFY_MINUTES = 1;
+const WATCH_VERIFY_MINUTES = 60;
 const WATCH_VERIFY_REWARD = 100;
 
 export async function POST(req: Request) {
