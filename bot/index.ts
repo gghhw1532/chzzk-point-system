@@ -17,7 +17,7 @@ const client = new Client({
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL!;
 
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log(`${client.user?.tag} 로그인 완료!`);
   updateBotStatus("discord", "online", "디스코드 봇 로그인 완료").catch(console.error);
 });
