@@ -5,7 +5,7 @@ import io from "socket.io-client";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { startBotHeartbeat, updateBotStatus } from "@/lib/bot-status";
 import { chzzkFetchWithRefresh } from "@/lib/chzzk-token";
-
+import { startWatchRewardLoop } from "./watch-reward-loop";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -73,6 +73,8 @@ async function start() {
 
 
 console.log("[CHZZK] DB에서 스트리머 토큰 로드 시도");
+
+startWatchRewardLoop();
 
 const sessionUrl = await createSessionUrl();
 

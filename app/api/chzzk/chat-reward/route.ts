@@ -22,6 +22,8 @@ export async function POST(req: Request) {
       10
     );
 
+    
+
     const { data: user, error: userError } = await supabaseAdmin
       .from("users")
       .select("*")
@@ -69,6 +71,14 @@ export async function POST(req: Request) {
         .eq("user_id", user.id)
         .maybeSingle();
 
+await supabaseAdmin
+  .from("watch_sessions")
+  .update({
+    last_activity_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  })
+  .eq("id", watchSession.id);
+
     if (watchSessionError) {
       return errorResponse("시청 세션 조회 실패", 500, watchSessionError);
     }
@@ -80,6 +90,9 @@ export async function POST(req: Request) {
           user_id: user.id,
           started_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          is_watching: true,
+          last_watch_reward_at: new Date().toISOString(),
+          last_activity_at: new Date().toISOString(),
         });
 
       if (createSessionError) {
