@@ -4,66 +4,23 @@ dotenv.config({ path: ".env.local" });
 import io from "socket.io-client";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { startBotHeartbeat, updateBotStatus } from "@/lib/bot-status";
+import { chzzkFetchWithRefresh } from "@/lib/chzzk-token";
 
-const CHZZK_API = "https://openapi.chzzk.naver.com";
+
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 
-async function getStreamerToken() {
-  const { data: streamer, error } = await supabaseAdmin
-    .from("users")
-    .select("*")
-    .eq("role", "streamer")
-    .not("chzzk_access_token", "is", null)
-    .order("chzzk_token_updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
 
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  if (!streamer?.chzzk_access_token) {
-    throw new Error("DB에서 스트리머 chzzk_access_token을 찾지 못했습니다.");
-  }
-
-  return streamer.chzzk_access_token;
-}
-
-async function chzzkFetch(
-  accessToken: string,
-  path: string,
-  options: RequestInit = {}
-) {
-  const response = await fetch(`${CHZZK_API}${path}`, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`[CHZZK API ERROR] ${response.status} ${text}`);
-  }
-
-  return response.json();
-}
-
-async function createSessionUrl(accessToken: string) {
-  const data = await chzzkFetch(accessToken, "/open/v1/sessions/auth");
+async function createSessionUrl() {
+  const data = await chzzkFetchWithRefresh("/open/v1/sessions/auth");
   return data.content?.url ?? data.url;
 }
 
 async function subscribeEvent(
-  accessToken: string,
   sessionKey: string,
   type: "chat" | "donation" | "subscription"
 ) {
-  await chzzkFetch(
-    accessToken,
+  await chzzkFetchWithRefresh(
     `/open/v1/sessions/events/subscribe/${type}?sessionKey=${sessionKey}`,
     { method: "POST" }
   );
@@ -113,13 +70,13 @@ function parseEvent(rawData: any) {
 async function start() {
   console.log("[CHZZK] 세션 봇 시작");
 
-  const accessToken = await getStreamerToken();
 
-  console.log("[CHZZK] DB에서 스트리머 토큰 로드 완료");
 
-  const sessionUrl = await createSessionUrl(accessToken);
+console.log("[CHZZK] DB에서 스트리머 토큰 로드 시도");
 
-  console.log("[CHZZK] 세션 URL 발급 완료");
+const sessionUrl = await createSessionUrl();
+
+console.log("[CHZZK] 세션 URL 발급 완료");
 
   const socket = io.connect(sessionUrl, {
     reconnection: true,
@@ -154,9 +111,9 @@ async function start() {
 
     console.log("[CHZZK] sessionKey:", sessionKey);
 
-    await subscribeEvent(accessToken, sessionKey, "chat");
-    await subscribeEvent(accessToken, sessionKey, "donation");
-    await subscribeEvent(accessToken, sessionKey, "subscription");
+await subscribeEvent(sessionKey, "chat");
+await subscribeEvent(sessionKey, "donation");
+await subscribeEvent(sessionKey, "subscription");
   });
 
   socket.on("CHAT", async (rawData: any) => {
