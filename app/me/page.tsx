@@ -15,6 +15,8 @@ export default async function MePage() {
           치지직 로그인이 필요합니다.
         </p>
 
+        
+
         <a
           href="/api/auth/chzzk/login"
           className="mt-6 block w-full rounded-xl bg-black py-3 text-center text-sm font-bold text-white"
@@ -24,6 +26,21 @@ export default async function MePage() {
       </PageContainer>
     );
   }
+
+  <div className="mt-4 rounded-2xl bg-gray-50 p-4 text-sm leading-6 text-gray-500">
+  <p className="font-bold text-gray-700">치지직 로그인 안내</p>
+  <p className="mt-2">
+    치지직 로그인은 포인트 지급, 출석, 시청 인증, 상점 구매,
+    승부예측 참여를 위해 사용됩니다.
+  </p>
+  <p className="mt-2">
+    비밀번호는 저장하지 않으며, 치지직 채널 ID와 닉네임 등 필요한 정보만
+    저장됩니다.
+  </p>
+  <a href="/privacy" className="mt-2 inline-block font-bold text-violet-600">
+    개인정보 및 서비스 이용 안내 보기
+  </a>
+</div>
 
   const { data: pointLogs } = await supabase
     .from("point_logs")
