@@ -4,6 +4,9 @@ import { applyPointMultiplier } from "@/lib/points";
 import { getNumberSetting } from "@/lib/settings";
 import { errorResponse, successResponse } from "@/lib/api-response";
 
+const WATCH_VERIFY_MINUTES = 1;
+const WATCH_VERIFY_REWARD = 100;
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
@@ -29,6 +32,10 @@ export async function POST(req: Request) {
       return errorResponse("유저 없음", 404, userError);
     }
 
+    let chatRewardPoints = 0;
+    let watchRewardPoints = 0;
+    let watchVerified = false;
+
     const { data: lastReward, error: lastRewardError } = await supabaseAdmin
       .from("chat_activity_logs")
       .select("*")
@@ -41,26 +48,93 @@ export async function POST(req: Request) {
       return errorResponse("최근 채팅 보상 조회 실패", 500, lastRewardError);
     }
 
-    if (lastReward) {
-      const lastTime = new Date(lastReward.created_at).getTime();
-      const now = Date.now();
-      const diffMinutes = (now - lastTime) / 1000 / 60;
+    const now = Date.now();
 
-      if (diffMinutes < COOLDOWN_MINUTES) {
-        return successResponse({
-          rewarded: false,
-          cooldown: true,
-          remainingMinutes: Math.ceil(COOLDOWN_MINUTES - diffMinutes),
+    const canReceiveChatReward =
+      !lastReward ||
+      (now - new Date(lastReward.created_at).getTime()) / 1000 / 60 >=
+        COOLDOWN_MINUTES;
+
+    if (canReceiveChatReward) {
+      chatRewardPoints = applyPointMultiplier(
+        REWARD_POINTS,
+        user.subscription_tier
+      );
+    }
+
+    const { data: watchSession, error: watchSessionError } =
+      await supabaseAdmin
+        .from("watch_sessions")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+    if (watchSessionError) {
+      return errorResponse("시청 세션 조회 실패", 500, watchSessionError);
+    }
+
+    if (!watchSession) {
+      const { error: createSessionError } = await supabaseAdmin
+        .from("watch_sessions")
+        .insert({
+          user_id: user.id,
+          started_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         });
+
+      if (createSessionError) {
+        return errorResponse("시청 세션 생성 실패", 500, createSessionError);
+      }
+    } else {
+      const startedAt = new Date(watchSession.started_at).getTime();
+      const diffMinutes = (now - startedAt) / 1000 / 60;
+
+      if (diffMinutes >= WATCH_VERIFY_MINUTES) {
+        watchVerified = true;
+        watchRewardPoints = applyPointMultiplier(
+          WATCH_VERIFY_REWARD,
+          user.subscription_tier
+        );
+
+        const { error: updateSessionError } = await supabaseAdmin
+          .from("watch_sessions")
+          .update({
+            started_at: new Date().toISOString(),
+            last_verified_at: new Date().toISOString(),
+            total_verified_hours:
+              (watchSession.total_verified_hours ?? 0) + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", watchSession.id);
+
+        if (updateSessionError) {
+          return errorResponse(
+            "시청 인증 세션 업데이트 실패",
+            500,
+            updateSessionError
+          );
+        }
+      } else {
+        await supabaseAdmin
+          .from("watch_sessions")
+          .update({
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", watchSession.id);
       }
     }
 
-    const rewardPoints = applyPointMultiplier(
-      REWARD_POINTS,
-      user.subscription_tier
-    );
+    const totalRewardPoints = chatRewardPoints + watchRewardPoints;
 
-    const newPoints = user.points + rewardPoints;
+    if (totalRewardPoints <= 0) {
+      return successResponse({
+        rewarded: false,
+        cooldown: true,
+        watchVerified: false,
+      });
+    }
+
+    const newPoints = user.points + totalRewardPoints;
 
     const { error: updateError } = await supabaseAdmin
       .from("users")
@@ -71,44 +145,63 @@ export async function POST(req: Request) {
       return errorResponse("포인트 업데이트 실패", 500, updateError);
     }
 
-    const { error: activityError } = await supabaseAdmin
-      .from("chat_activity_logs")
-      .insert({
-        user_id: user.id,
-        message,
-        reward_points: rewardPoints,
-      });
+    if (chatRewardPoints > 0) {
+      const { error: activityError } = await supabaseAdmin
+        .from("chat_activity_logs")
+        .insert({
+          user_id: user.id,
+          message,
+          reward_points: chatRewardPoints,
+        });
 
-    if (activityError) {
-      return errorResponse("채팅 활동 로그 저장 실패", 500, activityError);
+      if (activityError) {
+        return errorResponse("채팅 활동 로그 저장 실패", 500, activityError);
+      }
+
+      const { error: pointLogError } = await supabaseAdmin
+        .from("point_logs")
+        .insert({
+          user_id: user.id,
+          type: "chat_reward",
+          amount: chatRewardPoints,
+          reason: "채팅 활동 보상",
+        });
+
+      if (pointLogError) {
+        return errorResponse("포인트 로그 저장 실패", 500, pointLogError);
+      }
     }
 
-    const { error: pointLogError } = await supabaseAdmin
-      .from("point_logs")
-      .insert({
-        user_id: user.id,
-        type: "chat_reward",
-        amount: rewardPoints,
-        reason: "채팅 활동 보상",
-      });
+    if (watchRewardPoints > 0) {
+      const { error: watchPointLogError } = await supabaseAdmin
+        .from("point_logs")
+        .insert({
+          user_id: user.id,
+          type: "watch_1hour_reward",
+          amount: watchRewardPoints,
+          reason: "방송 시청 1시간 인증 보상",
+        });
 
-    if (pointLogError) {
-      return errorResponse("포인트 로그 저장 실패", 500, pointLogError);
-    }
+      if (watchPointLogError) {
+        return errorResponse("시청 인증 로그 저장 실패", 500, watchPointLogError);
+      }
 
-    if (user.discord_user_id && user.discord_dm_enabled) {
-      await sendDiscordDM(
-        user.discord_user_id,
-        `💬 채팅 활동 보상!\n\n+${rewardPoints}P 지급되었습니다.\n현재 포인트: ${newPoints}P`
-      ).catch(console.error);
+      if (user.discord_user_id && user.discord_dm_enabled) {
+        await sendDiscordDM(
+          user.discord_user_id,
+          `⏰ 방송 시청 1시간 인증 완료!\n\n+${watchRewardPoints}P 지급 완료 🎉\n현재 포인트: ${newPoints}P\n\n계속 시청하면 다음 1시간 보상도 받을 수 있어요.`
+        ).catch(console.error);
+      }
     }
 
     return successResponse({
       rewarded: true,
-      reward: rewardPoints,
+      chatReward: chatRewardPoints,
+      watchReward: watchRewardPoints,
+      watchVerified,
       points: newPoints,
     });
   } catch (error) {
-    return errorResponse("채팅 보상 처리 실패", 500, error);
+    return errorResponse("채팅/시청 보상 처리 실패", 500, error);
   }
 }
