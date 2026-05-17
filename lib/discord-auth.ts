@@ -1,7 +1,6 @@
 export function createDiscordLoginUrl() {
   const clientId = process.env.DISCORD_CLIENT_ID!;
-  const redirectUri =
-    "http://localhost:3000/api/auth/discord/callback";
+  const redirectUri = process.env.DISCORD_REDIRECT_URI!;
 
   const params = new URLSearchParams({
     client_id: clientId,
