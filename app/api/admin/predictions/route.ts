@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sendDiscordChannelMessage } from "@/lib/discord";
 import { checkAdminApi } from "@/lib/admin";
+import {
+  sendChzzkChat,
+  createHighlightMessage,
+} from "@/lib/chzzk-chat";
 
 
 export async function POST(req: Request) {
@@ -57,5 +61,17 @@ if (!admin.ok) {
   `🎲 새로운 승부예측이 시작되었습니다!\n\n주제: ${title}\n선택지: ${option1} / ${option2}\n\n참여하기: ${process.env.NEXT_PUBLIC_SITE_URL}/predictions`
 ).catch(console.error);
 
+  await sendChzzkChat(
+  createHighlightMessage([
+    "🔮 승부예측 시작!",
+    `📌 ${title}`,
+    "👉 사이트에서 참여 가능!",
+  ])
+);
+
+
+
   return NextResponse.json({ success: true });
+
+
 }

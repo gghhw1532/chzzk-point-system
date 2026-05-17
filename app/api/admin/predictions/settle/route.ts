@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { sendDiscordChannelMessage } from "@/lib/discord";
 import { checkAdminApi } from "@/lib/admin";
+import {
+  sendChzzkChat,
+  createHighlightMessage,
+} from "@/lib/chzzk-chat";
 
 export async function POST(req: Request) {
   try {
@@ -131,6 +135,13 @@ if (!admin.ok) {
     winningBets.length
   }명`
 ).catch(console.error);
+
+await sendChzzkChat(
+  createHighlightMessage([
+    "🏆 승부예측 정산 완료!",
+    `📌 ${prediction.title}`,
+  ])
+);
 
     return NextResponse.json({
       success: true,

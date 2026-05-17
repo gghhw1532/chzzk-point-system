@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
-import { sendChzzkChat } from "@/lib/chzzk";
 import { getCurrentUser } from "@/lib/auth";
 import { sendDiscordDM } from "@/lib/discord";
+import {
+  sendChzzkChat,
+  createHighlightMessage,
+} from "@/lib/chzzk-chat";
 
 export async function POST(req: Request) {
   try {
@@ -86,6 +89,15 @@ export async function POST(req: Request) {
     user.discord_user_id,
     `🛒 상품 구매 완료!\n\n상품: ${item.name}\n사용 포인트: ${item.price}P\n남은 포인트: ${newPoints}P`
   ).catch(console.error);
+
+  await sendChzzkChat(
+  createHighlightMessage([
+    "🛒 포인트 상점 구매!",
+    `👤 ${user.nickname}`,
+    `🎁 ${item.name}`,
+    `💰 ${item.price}P 사용`,
+  ])
+);
 }
 
     return NextResponse.json({
