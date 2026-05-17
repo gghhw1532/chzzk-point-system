@@ -2,7 +2,12 @@ import PageContainer from "@/components/PageContainer";
 import { supabase } from "@/lib/supabase";
 import PurchaseButton from "@/components/PurchaseButton";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function ShopPage() {
+
+
 const { data: items } = await supabase
   .from("shop_items")
   .select("*")
