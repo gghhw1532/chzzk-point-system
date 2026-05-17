@@ -3,11 +3,11 @@ import { supabase } from "@/lib/supabase";
 import PurchaseButton from "@/components/PurchaseButton";
 
 export default async function ShopPage() {
-  const { data: items } = await supabase
-    .from("shop_items")
-    .select("*")
-    .eq("is_active", true)
-    .order("price");
+const { data: items } = await supabase
+  .from("shop_items")
+  .select("*")
+  .eq("is_active", true)
+  .order("created_at", { ascending: false });
 
   return (
     <PageContainer>
