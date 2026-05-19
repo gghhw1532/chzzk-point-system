@@ -108,14 +108,28 @@ async function fetchWithRoleRefresh(
   let token = await getTokenByRole(role);
 
   let response = await requestWithToken(token, path, options);
+if (response.status === 401) {
+  console.log(`[CHZZK ${role}] access_token 만료됨 → 재로그인 필요`);
 
-  if (response.status === 401) {
-    console.log(`[CHZZK ${role}] access_token 만료 감지 → 자동 재발급 시도`);
+  await supabaseAdmin.from("bot_status").upsert(
+    {
+      name: role === "streamer" ? "chzzk" : "chzzk_bot",
+      status: "error",
+      memo:
+        role === "streamer"
+          ? "치지직 스트리머 재로그인 필요"
+          : "치지직 봇 계정 재로그인 필요",
+      last_ping: new Date().toISOString(),
+    },
+    { onConflict: "name" }
+  );
 
-    token = await refreshChzzkToken(token);
-
-    response = await requestWithToken(token, path, options);
-  }
+  throw new Error(
+    role === "streamer"
+      ? "치지직 스트리머 계정 재로그인 필요"
+      : "치지직 봇 계정 재로그인 필요"
+  );
+}
 
   const text = await response.text();
 
