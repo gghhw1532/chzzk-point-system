@@ -38,18 +38,18 @@ export async function refreshStreamerToken(token: StreamerToken) {
     throw new Error("스트리머 refresh_token이 없습니다. 다시 로그인해야 합니다.");
   }
 
-  const response = await fetch(`${CHZZK_API}/auth/v1/token`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Client-Id": process.env.CHZZK_CLIENT_ID!,
-      "Client-Secret": process.env.CHZZK_CLIENT_SECRET!,
-    },
-    body: JSON.stringify({
-      grantType: "refresh_token",
-      refreshToken: token.refreshToken,
-    }),
-  });
+const response = await fetch(`${CHZZK_API}/auth/v1/token`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Client-Id": process.env.CHZZK_CLIENT_ID!,
+    "Client-Secret": process.env.CHZZK_CLIENT_SECRET!,
+  },
+  body: JSON.stringify({
+    grantType: "refresh_token",
+    refreshToken: token.refreshToken,
+  }),
+});
 
   const data = await response.json();
 
