@@ -2,54 +2,54 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const CHZZK_API = "https://openapi.chzzk.naver.com";
 
-type StreamerToken = {
+type ChzzkToken = {
   userId: string;
   accessToken: string;
   refreshToken: string | null;
+  role: "streamer" | "chzzk_bot";
 };
 
-export async function getStreamerToken(): Promise<StreamerToken> {
-  const { data: streamer, error } = await supabaseAdmin
+async function getTokenByRole(role: "streamer" | "chzzk_bot"): Promise<ChzzkToken> {
+  const { data: user, error } = await supabaseAdmin
     .from("users")
     .select("*")
-    .eq("role", "streamer")
+    .eq("role", role)
     .not("chzzk_access_token", "is", null)
     .order("chzzk_token_updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
-  if (!streamer?.chzzk_access_token) {
-    throw new Error("DB에서 스트리머 chzzk_access_token을 찾지 못했습니다.");
+  if (!user?.chzzk_access_token) {
+    throw new Error(`DB에서 ${role} access_token을 찾지 못했습니다.`);
   }
 
   return {
-    userId: streamer.id,
-    accessToken: streamer.chzzk_access_token,
-    refreshToken: streamer.chzzk_refresh_token,
+    userId: user.id,
+    accessToken: user.chzzk_access_token,
+    refreshToken: user.chzzk_refresh_token,
+    role,
   };
 }
 
-export async function refreshStreamerToken(token: StreamerToken) {
+async function refreshChzzkToken(token: ChzzkToken): Promise<ChzzkToken> {
   if (!token.refreshToken) {
-    throw new Error("스트리머 refresh_token이 없습니다. 다시 로그인해야 합니다.");
+    throw new Error(`${token.role} refresh_token이 없습니다. 다시 로그인해야 합니다.`);
   }
 
-const response = await fetch(`${CHZZK_API}/auth/v1/token`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Client-Id": process.env.CHZZK_CLIENT_ID!,
-    "Client-Secret": process.env.CHZZK_CLIENT_SECRET!,
-  },
-  body: JSON.stringify({
-    grantType: "refresh_token",
-    refreshToken: token.refreshToken,
-  }),
-});
+  const response = await fetch(`${CHZZK_API}/auth/v1/token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Client-Id": process.env.CHZZK_CLIENT_ID!,
+      "Client-Secret": process.env.CHZZK_CLIENT_SECRET!,
+    },
+    body: JSON.stringify({
+      grantType: "refresh_token",
+      refreshToken: token.refreshToken,
+    }),
+  });
 
   const data = await response.json();
 
@@ -76,108 +76,69 @@ const response = await fetch(`${CHZZK_API}/auth/v1/token`, {
     })
     .eq("id", token.userId);
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
   return {
-    userId: token.userId,
+    ...token,
     accessToken: newAccessToken,
     refreshToken: newRefreshToken,
   };
 }
 
-export async function chzzkFetchWithRefresh(
+async function requestWithToken(
+  token: ChzzkToken,
   path: string,
   options: RequestInit = {}
 ) {
-  let token = await getStreamerToken();
-
-  async function request(accessToken: string) {
-    return fetch(`${CHZZK_API}${path}`, {
-      ...options,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        ...(options.headers || {}),
-      },
-    });
-  }
-
-  let response = await request(token.accessToken);
-
-  if (response.status === 401) {
-    console.log("[CHZZK] access_token 만료 감지 → 자동 재발급 시도");
-
-    token = await refreshStreamerToken(token);
-
-    response = await request(token.accessToken);
-  }
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`[CHZZK API ERROR] ${response.status} ${text}`);
-  }
-
-  return response.json();
+  return fetch(`${CHZZK_API}${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token.accessToken}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
 }
 
-export async function getChzzkBotToken(): Promise<StreamerToken> {
-  const { data: botUser, error } = await supabaseAdmin
-    .from("users")
-    .select("*")
-    .eq("role", "chzzk_bot")
-    .not("chzzk_access_token", "is", null)
-    .order("chzzk_token_updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  if (!botUser?.chzzk_access_token) {
-    throw new Error("DB에서 chzzk_bot 토큰을 찾지 못했습니다.");
-  }
-
-  return {
-    userId: botUser.id,
-    accessToken: botUser.chzzk_access_token,
-    refreshToken: botUser.chzzk_refresh_token,
-  };
-}
-
-export async function chzzkBotFetchWithRefresh(
+async function fetchWithRoleRefresh(
+  role: "streamer" | "chzzk_bot",
   path: string,
   options: RequestInit = {}
 ) {
-  let token = await getChzzkBotToken();
+  let token = await getTokenByRole(role);
 
-  async function request(accessToken: string) {
-    return fetch(`${CHZZK_API}${path}`, {
-      ...options,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        ...(options.headers || {}),
-      },
-    });
-  }
-
-  let response = await request(token.accessToken);
+  let response = await requestWithToken(token, path, options);
 
   if (response.status === 401) {
-    console.log("[CHZZK BOT] access_token 만료 감지 → 자동 재발급 시도");
+    console.log(`[CHZZK ${role}] access_token 만료 감지 → 자동 재발급 시도`);
 
-    token = await refreshStreamerToken(token);
+    token = await refreshChzzkToken(token);
 
-    response = await request(token.accessToken);
+    response = await requestWithToken(token, path, options);
+  }
+
+  const text = await response.text();
+
+  let data: any = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
   }
 
   if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`[CHZZK BOT API ERROR] ${response.status} ${text}`);
+    console.error(`[CHZZK ${role} API ERROR]`, response.status, data);
+    throw new Error(`[CHZZK API ERROR] ${response.status}`);
   }
 
-  return response.json();
+  return data;
+}
+
+export function chzzkFetchWithRefresh(path: string, options: RequestInit = {}) {
+  return fetchWithRoleRefresh("streamer", path, options);
+}
+
+export function chzzkBotFetchWithRefresh(path: string, options: RequestInit = {}) {
+  return fetchWithRoleRefresh("chzzk_bot", path, options);
 }
