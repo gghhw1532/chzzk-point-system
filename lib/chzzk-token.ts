@@ -121,3 +121,63 @@ export async function chzzkFetchWithRefresh(
 
   return response.json();
 }
+
+export async function getChzzkBotToken(): Promise<StreamerToken> {
+  const { data: botUser, error } = await supabaseAdmin
+    .from("users")
+    .select("*")
+    .eq("role", "chzzk_bot")
+    .not("chzzk_access_token", "is", null)
+    .order("chzzk_token_updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!botUser?.chzzk_access_token) {
+    throw new Error("DB에서 chzzk_bot 토큰을 찾지 못했습니다.");
+  }
+
+  return {
+    userId: botUser.id,
+    accessToken: botUser.chzzk_access_token,
+    refreshToken: botUser.chzzk_refresh_token,
+  };
+}
+
+export async function chzzkBotFetchWithRefresh(
+  path: string,
+  options: RequestInit = {}
+) {
+  let token = await getChzzkBotToken();
+
+  async function request(accessToken: string) {
+    return fetch(`${CHZZK_API}${path}`, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+    });
+  }
+
+  let response = await request(token.accessToken);
+
+  if (response.status === 401) {
+    console.log("[CHZZK BOT] access_token 만료 감지 → 자동 재발급 시도");
+
+    token = await refreshStreamerToken(token);
+
+    response = await request(token.accessToken);
+  }
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`[CHZZK BOT API ERROR] ${response.status} ${text}`);
+  }
+
+  return response.json();
+}

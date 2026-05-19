@@ -21,7 +21,7 @@ if (!admin.ok) {
 
   const body = await req.json();
 
-  const { name, price, description } = body;
+  const { name, price, dailyPurchaseLimit, description } = body;
 
   if (!name || !price) {
     return NextResponse.json(
@@ -33,6 +33,7 @@ if (!admin.ok) {
   const { error } = await supabaseAdmin.from("shop_items").insert({
     name,
     price,
+    daily_purchase_limit: dailyPurchaseLimit ?? null,
     description,
   });
 

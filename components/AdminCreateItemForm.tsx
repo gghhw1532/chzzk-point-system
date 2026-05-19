@@ -8,6 +8,7 @@ export default function AdminCreateItemForm() {
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [dailyPurchaseLimit, setDailyPurchaseLimit] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -23,6 +24,7 @@ export default function AdminCreateItemForm() {
         name,
         price: Number(price),
         description,
+        dailyPurchaseLimit: dailyPurchaseLimit ? Number(dailyPurchaseLimit) : null,
       }),
     });
 
@@ -66,6 +68,14 @@ export default function AdminCreateItemForm() {
           className="w-full rounded-xl border px-4 py-3"
           required
         />
+
+        <input
+  type="number"
+  value={dailyPurchaseLimit}
+  onChange={(e) => setDailyPurchaseLimit(e.target.value)}
+  placeholder="하루 전체 구매 제한 횟수 (비우면 제한 없음)"
+  className="w-full rounded-2xl border px-4 py-3 outline-none focus:border-violet-500"
+/>
 
         <textarea
           value={description}

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { formatKoreanShortDateTime } from "@/lib/format-time";
 
 function getLogLabel(type: string) {
   const labels: Record<string, string> = {
@@ -86,7 +87,7 @@ export default async function AdminLogsPage() {
                 </p>
 
                 <p className="text-gray-400">
-                  {new Date(log.created_at).toLocaleString("ko-KR")}
+                 {formatKoreanShortDateTime(log.created_at)}
                 </p>
               </div>
             ))

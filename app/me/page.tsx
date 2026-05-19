@@ -2,6 +2,7 @@ import PageContainer from "@/components/PageContainer";
 import StatCard from "@/components/StatCard";
 import { supabase } from "@/lib/supabase";
 import { getCurrentUser } from "@/lib/auth";
+import { formatKoreanDateTime } from "@/lib/format-time";
 
 export default async function MePage() {
   const user = await getCurrentUser();
@@ -140,7 +141,7 @@ export default async function MePage() {
                 <div>
                   <p className="font-semibold">{log.reason}</p>
                   <p className="mt-1 text-sm text-gray-500">
-                    {new Date(log.created_at).toLocaleString("ko-KR")}
+                    {formatKoreanDateTime(log.created_at)}
                   </p>
                 </div>
 

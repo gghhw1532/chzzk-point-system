@@ -6,6 +6,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 import { startBotHeartbeat, updateBotStatus } from "@/lib/bot-status";
 import { chzzkFetchWithRefresh } from "@/lib/chzzk-token";
 import { startWatchRewardLoop } from "./watch-reward-loop";
+import { handleChzzkCommand } from "./chzzk-commands";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -122,6 +123,12 @@ await subscribeEvent(sessionKey, "subscription");
     const data = parseEvent(rawData);
 
     console.log("[CHZZK CHAT]", data);
+
+    const handledCommand = await handleChzzkCommand(data);
+
+if (handledCommand) {
+  return;
+}
 
     await postToLocalApi("/api/chzzk/chat-reward", {
       chzzkChannelId: data.senderChannelId,

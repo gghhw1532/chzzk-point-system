@@ -6,6 +6,7 @@ import {
   sendChzzkChat,
   createHighlightMessage,
 } from "@/lib/chzzk-chat";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export async function POST(req: Request) {
   try {
@@ -42,6 +43,35 @@ export async function POST(req: Request) {
       );
     }
 
+    if (item.daily_purchase_limit) {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const { count, error: countError } = await supabaseAdmin
+    .from("purchases")
+    .select("id", { count: "exact", head: true })
+    .eq("item_id", item.id)
+    .gte("created_at", todayStart.toISOString())
+    .lte("created_at", todayEnd.toISOString());
+
+  if (countError) {
+    return NextResponse.json(
+      { error: "구매 제한 확인 실패" },
+      { status: 500 }
+    );
+  }
+
+  if ((count ?? 0) >= item.daily_purchase_limit) {
+    return NextResponse.json(
+      { error: "오늘 구매 가능한 수량이 모두 소진되었습니다." },
+      { status: 400 }
+    );
+  }
+}
+
     if (user.points < item.price) {
       return NextResponse.json({ error: "포인트 부족" }, { status: 400 });
     }
@@ -57,15 +87,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
+    
+
     const { error: purchaseError } = await supabase.from("purchases").insert({
       user_id: user.id,
       item_id: item.id,
       price: item.price,
     });
 
+    
+
     if (purchaseError) {
       return NextResponse.json({ error: purchaseError.message }, { status: 500 });
     }
+
+    
 
     const { error: logError } = await supabase.from("point_logs").insert({
       user_id: user.id,
@@ -73,6 +109,8 @@ export async function POST(req: Request) {
       amount: -item.price,
       reason: `${item.name} 구매`,
     });
+
+    
 
     if (logError) {
       return NextResponse.json({ error: logError.message }, { status: 500 });
