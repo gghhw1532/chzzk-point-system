@@ -28,11 +28,11 @@ export async function POST(req: Request) {
       .from("users")
       .select("*")
       .eq("chzzk_channel_id", chzzkChannelId)
-      .single();
+      .maybeSingle();
 
-    if (userError || !user) {
-      return errorResponse("유저 없음", 404, userError);
-    }
+    if (!user) {
+  return errorResponse("유저 없음", 404);
+}
 
     let chatRewardPoints = 0;
     let watchRewardPoints = 0;
